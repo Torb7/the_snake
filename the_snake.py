@@ -70,13 +70,14 @@ class GameObject:
     def draw_grid(
         self,
         position: tuple[int, int],
-        color: tuple[int, int, int] | None = None
+        color: tuple[int, int, int] | None = None,
     ) -> None:
         """Метод отрисовывает одну ячейку."""
         color = color if color else self.body_color
         rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
         pg.draw.rect(screen, color, rect)
-        pg.draw.rect(screen, BORDER_COLOR, rect, 1)
+        if color != BOARD_BACKGROUND_COLOR:
+            pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
 
 class Apple(GameObject):
@@ -96,11 +97,9 @@ class Apple(GameObject):
         while True:
             apple_X: int = randrange(0, SCREEN_WIDTH, GRID_SIZE)
             apple_Y: int = randrange(0, SCREEN_HEIGHT, GRID_SIZE)
-            apple_grid: tuple[int, int] = (apple_X, apple_Y)
-            if apple_grid not in filled_grids:
+            self.position = (apple_X, apple_Y)
+            if self.position not in filled_grids:
                 break
-
-        self.position = apple_grid
 
     def draw(self) -> None:
         """Отрисовывает яблоко на игровой поверхности."""
@@ -140,8 +139,7 @@ class Snake(GameObject):
 
         # Затирание последнего сегмента
         if self.last:
-            last_rect = pg.Rect(self.last, (GRID_SIZE, GRID_SIZE))
-            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
+            self.draw_grid(self.last, BOARD_BACKGROUND_COLOR)
 
     def update_direction(self, next_direction: tuple[int, int]) -> None:
         """Обновляет направление движения змейки после нажатия на кнопку."""
@@ -158,22 +156,11 @@ class Snake(GameObject):
         """
         return self.positions[0]
 
-    def check_intersection(self, grid: tuple[int, int]) -> bool:
-        """Проверка пересечений ячеек."""
-        snake_X, snake_Y = self.get_head_position()
-        grid_X, grid_Y = grid
-
-        return (
-            snake_X < grid_X + GRID_SIZE
-            and snake_X + GRID_SIZE > grid_X
-            and snake_Y < grid_Y + GRID_SIZE
-            and snake_Y + GRID_SIZE > grid_Y
-        )
-
     def elongation(self):
         """Увеличение змейки на одну ячейку."""
-        self.positions.append(self.last)
-        self.last = None
+        if self.last:
+            self.positions.append(self.last)
+            self.last = None
 
 
 def handle_keys(game_object):
@@ -205,12 +192,12 @@ def main():
         # Проверка на столкновение змейки с самой собой.
         if snake.get_head_position() in snake.positions[1:]:
             snake.reset()
-            apple.randomize_position(snake.positions)
+            apple.randomize_position(tuple(snake.positions))
             screen.fill(BOARD_BACKGROUND_COLOR)
         # Проверка на столкновение змейки с яблоком.
-        elif snake.check_intersection(apple.position):
+        elif snake.get_head_position() == apple.position:
             snake.elongation()
-            apple.randomize_position(snake.positions)
+            apple.randomize_position(tuple(snake.positions))
 
         apple.draw()
         snake.draw()
